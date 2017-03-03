@@ -1,0 +1,11 @@
+<launch>
+<include file="$(find freenect_launch)/launch/freenect.launch">
+	<arg name="depth_registration" value="true"/>
+</include>
+<include file="$(find elektron_bringup)/launch/elektron_minimal.launch"/>
+<node name="tf_kinect_broadcaster1" pkg="tf_kinect" type="tf_kinect_broadcaster" />
+<include file="$(find map_throttle)/launch/freenect_throttle.launch">
+	<arg name="rate" value="1"/>
+</include>
+<include file="$(find map_throttle)/launch/rtabmap_elektron.launch"/>
+</launch>
