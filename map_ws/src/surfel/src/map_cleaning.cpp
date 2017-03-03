@@ -206,7 +206,7 @@ int main (int argc, char** argv)
   }
 
   
-  //writer.write<pcl::PointXYZRGBNormal> ("normals.pcd", *cloud_with_normals, false);
+  writer.write<pcl::PointXYZRGB> ("colored_cloud.pcd", *colored_cloud_p, false);
   
   
   

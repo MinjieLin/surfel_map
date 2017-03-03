@@ -4,4 +4,7 @@
 *.pcl
 *.pcd
 *.gv
-
+*.db
+*~
+*.ply
+.catkin_workspace
