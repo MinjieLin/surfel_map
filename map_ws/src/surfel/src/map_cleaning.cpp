@@ -163,9 +163,11 @@ int main (int argc, char** argv)
 
   std::vector <pcl::PointIndices> clusters;
   reg.extract (clusters);
-  
   pcl::PointCloud <pcl::PointXYZRGB>::Ptr colored_cloud = reg.getColoredCloud ();
   pcl::PointCloud <pcl::PointXYZRGB>::Ptr colored_cloud_p (new pcl::PointCloud<pcl::PointXYZRGB>);
+  
+  std::cout << "Number of clusters is equal to " << clusters.size () << std::endl;
+  std::cout << "First cluster has " << clusters[0].indices.size () << " points." << endl;
  
    // build the condition
   int rMin = 253;
@@ -184,24 +186,61 @@ int main (int argc, char** argv)
   // apply filter
   condrem.filter (*colored_cloud_p); 
   
+  // view only the first cluster
+  pcl::IndicesPtr clusterindices (new std::vector<int>(clusters[1].indices));
+  pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
+  pcl::ExtractIndices<pcl::PointXYZRGB> extract0;
+  extract0.setInputCloud (colored_cloud_p);
+  extract0.setIndices (clusterindices);
+  extract0.setNegative (false);
+  extract0.filter (*first_cluster);
+  
+  
+  pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
+  pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
+  // Create the segmentation object
+  pcl::SACSegmentation<pcl::PointXYZRGB> seg;
+  // Optional
+  seg.setOptimizeCoefficients (true);
+  // Mandatory
+  seg.setModelType (pcl::SACMODEL_PLANE);
+  seg.setMethodType (pcl::SAC_RANSAC);
+  seg.setDistanceThreshold (0.01);
+
+  seg.setInputCloud (first_cluster);
+  seg.segment (*inliers, *coefficients);
+
+  if (inliers->indices.size () == 0)
+  {
+    PCL_ERROR ("Could not estimate a planar model for the given dataset.");
+    return (-1);
+  }
+
+  std::cerr << "Model coefficients: " << coefficients->values[0] << " " 
+                                      << coefficients->values[1] << " "
+                                      << coefficients->values[2] << " " 
+                                      << coefficients->values[3] << std::endl;
+                                      
+  std::cerr << "Model inliers: " << inliers->indices.size () << std::endl;
+  
   
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-  //pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(colored_cloud);
+  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(first_cluster);
   //pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> single_color(cloud, 0, 255, 0);
   //viewer->addPointCloud<pcl::PointXYZRGB> (cloud_p, single_color, "sample cloud");
-  //viewer->addPointCloud<pcl::PointXYZRGB> (colored_cloud, rgb, "sample cloud2");
+  viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster, rgb, "sample cloud2");
   //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
-  //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud2");
-  //viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal> (cloud_filtered, cloud_normals, 20, 0.05, "normals");
+  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud2");
+  //viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal> (cloud_filtered_p, normals_p, 20, 0.05, "normals");
   //viewer->addCoordinateSystem (1.0);
-  //viewer->initCameraParameters ();
+  viewer->initCameraParameters ();
   
-  pcl::visualization::CloudViewer viewer2 ("Cluster viewer");
-  viewer2.showCloud(colored_cloud_p);
+  //pcl::visualization::CloudViewer viewer2 ("Cluster viewer");
+  //viewer2.showCloud(first_cluster);
   
-  while (!viewer2.wasStopped ())
+  while (!viewer->wasStopped ())
   {
-    //viewer2.spinOnce (100);
+    viewer->spinOnce (100);
     //boost::this_thread::sleep (boost::posix_time::microseconds (100000));
   }
 
