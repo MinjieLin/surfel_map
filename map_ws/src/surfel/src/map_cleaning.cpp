@@ -8,16 +8,22 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
+#include <pcl/sample_consensus/sac_model_plane.h>
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/ModelCoefficients.h>
-#include <pcl/sample_consensus/method_types.h>
-#include <pcl/sample_consensus/model_types.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/segmentation/region_growing.h>
 #include <pcl/search/search.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/filters/conditional_removal.h>
+#include <pcl/filters/project_inliers.h>
+#include <pcl/common/centroid.h>
+
+ #include <pcl/point_cloud.h>
+ #include <pcl/point_traits.h>
+ #include <pcl/PointIndices.h>
+ #include <pcl/cloud_iterator.h>
 
 
 int main (int argc, char** argv)
@@ -28,7 +34,9 @@ int main (int argc, char** argv)
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered_p (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_p (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr podloga (new pcl::PointCloud<pcl::PointXYZRGB>);
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::IndicesPtr indices (new std::vector<int>);
+  //cl::CentroidPoint<pcl::PointXYZRGB>::Ptr centroid (new pcl::CentroidPoint<pcl::PointXYZRGB>);
   
   if (pcl::io::loadPCDFile<pcl::PointXYZRGB> ("cloud3-3-2-2017.pcd", *cloud) == -1) //* load the file
   {
@@ -190,6 +198,8 @@ int main (int argc, char** argv)
   pcl::IndicesPtr clusterindices (new std::vector<int>(clusters[3].indices));
   pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster_p (new pcl::PointCloud<pcl::PointXYZRGB>);
+  pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster_proj (new pcl::PointCloud<pcl::PointXYZRGB>);
+  
   pcl::ExtractIndices<pcl::PointXYZRGB> extract0;
   extract0.setInputCloud (colored_cloud);
   extract0.setIndices (clusterindices);
@@ -201,16 +211,19 @@ int main (int argc, char** argv)
   pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
   // Create the segmentation object
   pcl::SACSegmentation<pcl::PointXYZRGB> seg;
+  
+  
   // Optional
   seg.setOptimizeCoefficients (true);
   // Mandatory
   seg.setModelType (pcl::SACMODEL_PLANE);
   seg.setMethodType (pcl::SAC_RANSAC);
-  seg.setDistanceThreshold (0.08);
+  seg.setDistanceThreshold (0.1);
 
   seg.setInputCloud (first_cluster);
   seg.segment (*inliers, *coefficients);
-
+  
+  
   if (inliers->indices.size () == 0)
   {
     PCL_ERROR ("Could not estimate a planar model for the given dataset.");
@@ -225,6 +238,20 @@ int main (int argc, char** argv)
   std::cerr << "Model inliers: " << inliers->indices.size () << std::endl;
   std::cerr << "Size of first cluster: " << first_cluster->size () << std::endl;
   
+   // Create the filtering object
+  pcl::ProjectInliers<pcl::PointXYZRGB> proj;
+  proj.setModelType (pcl::SACMODEL_PLANE);
+  proj.setInputCloud (first_cluster);
+  proj.setModelCoefficients (coefficients);
+  proj.filter (*first_cluster_proj);
+  
+  Eigen::Vector4f centroid;
+  pcl::compute3DCentroid (*first_cluster_proj, centroid);
+  
+  cout<< "Centroid: "<< endl <<centroid[0] << endl << centroid[1] << endl << centroid[2] << endl; 
+  
+  
+  
   pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices;
   extract_indices.setInputCloud (first_cluster);
   extract_indices.setIndices (inliers);
@@ -234,17 +261,22 @@ int main (int argc, char** argv)
   
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
   
-  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(first_cluster);
-  pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> single_color(first_cluster_p, 255, 0, 0);
+  //pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(first_cluster);
+  //pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> single_color(first_cluster_p, 255, 0, 0);
+  pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> single_color2(first_cluster_proj, 255, 255, 255);
   
-  viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster, rgb, "all");
-  viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster_p, single_color, "inliers");
+  //viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster, rgb, "all");
+  //viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster_p, single_color, "inliers");
+  viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster_proj, single_color2, "projected");
   
-  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "all");
-  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "inliers");
+  //viewer->addPlane(*coefficients, -10, 0, 0);
+  
+  //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "all");
+  //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "inliers");
+  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "projected");
   
   //viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal> (cloud_filtered_p, normals_p, 20, 0.05, "normals");
-  //viewer->addCoordinateSystem (1.0);
+  viewer->addCoordinateSystem (1.0);
   viewer->initCameraParameters ();
   
   //pcl::visualization::CloudViewer viewer2 ("Cluster viewer");
