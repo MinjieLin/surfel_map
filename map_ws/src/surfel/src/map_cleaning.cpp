@@ -251,6 +251,29 @@ int main (int argc, char** argv)
   cout<< "Centroid: "<< endl <<centroid[0] << endl << centroid[1] << endl << centroid[2] << endl; 
   
   
+  pcl::ModelCoefficients cylinder_coeff;
+  cylinder_coeff.values.resize (7);    // We need 7 values
+  cylinder_coeff.values[0] = centroid[0];
+  cylinder_coeff.values[1] = centroid[1];
+  cylinder_coeff.values[2] = centroid[2];
+  cylinder_coeff.values[3] = 1;
+  cylinder_coeff.values[4] = 0;
+  cylinder_coeff.values[5] = 0;
+  cylinder_coeff.values[6] = 1;
+  
+  
+  pcl::ModelCoefficients cylinder2_coeff;
+  cylinder2_coeff.values.resize (7);    // We need 7 values
+  cylinder2_coeff.values[0] = centroid[0];
+  cylinder2_coeff.values[1] = centroid[1]+2;
+  cylinder2_coeff.values[2] = centroid[2];
+  cylinder2_coeff.values[3] = 2;
+  cylinder2_coeff.values[4] = 0;
+  cylinder2_coeff.values[5] = 0;
+  cylinder2_coeff.values[6] = 1;
+
+  
+  
   
   pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices;
   extract_indices.setInputCloud (first_cluster);
@@ -278,6 +301,12 @@ int main (int argc, char** argv)
   //viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal> (cloud_filtered_p, normals_p, 20, 0.05, "normals");
   viewer->addCoordinateSystem (1.0);
   viewer->initCameraParameters ();
+  
+  viewer->addCylinder (cylinder_coeff, "cylinder");
+  viewer->addCylinder (cylinder2_coeff, "cylinder2");
+  
+  viewer->setRepresentationToSurfaceForAllActors(); 
+  
   
   //pcl::visualization::CloudViewer viewer2 ("Cluster viewer");
   //viewer2.showCloud(first_cluster);
