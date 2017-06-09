@@ -24,6 +24,7 @@
  #include <pcl/point_traits.h>
  #include <pcl/PointIndices.h>
  #include <pcl/cloud_iterator.h>
+ #include <pcl/PolygonMesh.h>
 
 
 int main (int argc, char** argv)
@@ -36,8 +37,17 @@ int main (int argc, char** argv)
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr podloga (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::IndicesPtr indices (new std::vector<int>);
+  
+    pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
+  pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster_p (new pcl::PointCloud<pcl::PointXYZRGB>);
+  pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster_proj (new pcl::PointCloud<pcl::PointXYZRGB>);
   //cl::CentroidPoint<pcl::PointXYZRGB>::Ptr centroid (new pcl::CentroidPoint<pcl::PointXYZRGB>);
   
+  pcl::PointCloud<pcl::PointXYZ>::Ptr surfel_points (new pcl::PointCloud<pcl::PointXYZ>);
+  
+  pcl::PCDWriter writer;
+  
+  if (0) {
   if (pcl::io::loadPCDFile<pcl::PointXYZRGB> ("cloud3-3-2-2017.pcd", *cloud) == -1) //* load the file
   {
     PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
@@ -67,7 +77,7 @@ int main (int argc, char** argv)
   std::cerr << "Cloud after filtering: " << std::endl;
   std::cerr << *cloud_filtered << std::endl;
 
-  pcl::PCDWriter writer;
+  
 
   // Create the normal estimation class, and pass the input dataset to it
   //pcl::NormalEstimation<pcl::PointXYZRGB, pcl::Normal> ne;
@@ -206,6 +216,17 @@ int main (int argc, char** argv)
   extract0.setNegative (false);
   extract0.filter (*first_cluster);
   
+}
+  
+  if (pcl::io::loadPCDFile<pcl::PointXYZRGB> ("first_cluster.pcd", *first_cluster) == -1) //* load the file
+  {
+    PCL_ERROR ("Couldn't read file \n");
+    return (-1);
+  }
+  std::cout << "Loaded cloud is "
+            << cloud->width << " x " << cloud->height
+            << "."
+            << std::endl;
   
   pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
   pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
@@ -238,6 +259,15 @@ int main (int argc, char** argv)
   std::cerr << "Model inliers: " << inliers->indices.size () << std::endl;
   std::cerr << "Size of first cluster: " << first_cluster->size () << std::endl;
   
+  Eigen::Vector3f normal(coefficients->values[0], coefficients->values[1], coefficients->values[2]);
+  Eigen::Vector3f disc(0,0,1);
+  
+  float dot_product = disc.dot(normal);
+
+  Eigen::Vector3f z = disc.cross(normal);
+  
+
+  
    // Create the filtering object
   pcl::ProjectInliers<pcl::PointXYZRGB> proj;
   proj.setModelType (pcl::SACMODEL_PLANE);
@@ -248,38 +278,58 @@ int main (int argc, char** argv)
   Eigen::Vector4f centroid;
   pcl::compute3DCentroid (*first_cluster_proj, centroid);
   
-  cout<< "Centroid: "<< endl <<centroid[0] << endl << centroid[1] << endl << centroid[2] << endl; 
+  cout<< "Centroid: "<< endl << centroid[0] << endl << centroid[1] << endl << centroid[2] << endl; 
   
+  
+  pcl::ModelCoefficients sphere_coeff;
+  sphere_coeff.values.resize (4);    // We need 4 values
+  sphere_coeff.values[0] = centroid[0];
+  sphere_coeff.values[1] = centroid[1];
+  sphere_coeff.values[2] = centroid[2];
+  sphere_coeff.values[3] = 0.1;
+
   
   pcl::ModelCoefficients cylinder_coeff;
   cylinder_coeff.values.resize (7);    // We need 7 values
   cylinder_coeff.values[0] = centroid[0];
   cylinder_coeff.values[1] = centroid[1];
   cylinder_coeff.values[2] = centroid[2];
-  cylinder_coeff.values[3] = 1;
-  cylinder_coeff.values[4] = 0;
-  cylinder_coeff.values[5] = 0;
-  cylinder_coeff.values[6] = 1;
+  cylinder_coeff.values[3] = coefficients->values[0]*0.01;
+  cylinder_coeff.values[4] = coefficients->values[1]*0.01;
+  cylinder_coeff.values[5] = coefficients->values[2]*0.01;
+  cylinder_coeff.values[6] = 0.1;
   
-  
-  pcl::ModelCoefficients cylinder2_coeff;
-  cylinder2_coeff.values.resize (7);    // We need 7 values
-  cylinder2_coeff.values[0] = centroid[0];
-  cylinder2_coeff.values[1] = centroid[1]+2;
-  cylinder2_coeff.values[2] = centroid[2];
-  cylinder2_coeff.values[3] = 2;
-  cylinder2_coeff.values[4] = 0;
-  cylinder2_coeff.values[5] = 0;
-  cylinder2_coeff.values[6] = 1;
 
-  
-  
-  
   pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices;
   extract_indices.setInputCloud (first_cluster);
   extract_indices.setIndices (inliers);
   extract_indices.setNegative (false);
   extract_indices.filter (*first_cluster_p);
+  
+  
+  // Draw a surfel //
+  
+  pcl::PointXYZ surfel_point(1, 1, 2);
+  surfel_points->push_back(surfel_point);
+  pcl::PointXYZ surfel_point1(-1, -1, -2);
+  surfel_points->push_back(surfel_point1);
+  pcl::PointXYZ surfel_point2(1, -1, 2);
+  surfel_points->push_back(surfel_point2);
+  pcl::PointXYZ surfel_point3(0, 0, 0);
+  surfel_points->push_back(surfel_point3);
+  
+  std::vector<pcl::Vertices> polygons;
+  pcl::Vertices triangle_;
+  triangle_.vertices.resize (3);
+  triangle_.vertices[0] = 1;
+  triangle_.vertices[1] = 2;
+  triangle_.vertices[2] = 3;
+  polygons.push_back(triangle_);
+  
+    std::cout << "Surfel_points are "
+            << surfel_points->width << " x " << surfel_points->height
+            << "."
+            << std::endl;
   
   
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
@@ -292,7 +342,7 @@ int main (int argc, char** argv)
   //viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster_p, single_color, "inliers");
   viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster_proj, single_color2, "projected");
   
-  //viewer->addPlane(*coefficients, -10, 0, 0);
+  //viewer->addSphere(centroid, 0.1, 0.5, 0.5, 0.5, "sphere");
   
   //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "all");
   //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "inliers");
@@ -302,8 +352,20 @@ int main (int argc, char** argv)
   viewer->addCoordinateSystem (1.0);
   viewer->initCameraParameters ();
   
-  viewer->addCylinder (cylinder_coeff, "cylinder");
-  viewer->addCylinder (cylinder2_coeff, "cylinder2");
+ 
+  //viewer->addCylinder(cylinder_coeff, "cylinder");
+  
+  //pcl::PolygonMesh surfel_mesh;
+  
+  viewer->addPolygonMesh<pcl::PointXYZ>(surfel_points, polygons, "mesz");
+  viewer->addPointCloud<pcl::PointXYZ> (surfel_points, "poooints");
+  
+  //Eigen::Matrix3f mat(1.0, 0.0, 0.0);
+  //Eigen::Affine3f pose = Eigen::Affine3f::Identity();
+  //pose = pose.rotate (Eigen::AngleAxisf (dot_product, z));
+
+    
+  //viewer->updateShapePose("surfel1",pose);
   
   viewer->setRepresentationToSurfaceForAllActors(); 
   
@@ -318,7 +380,7 @@ int main (int argc, char** argv)
   }
 
   
-  //writer.write<pcl::PointXYZRGB> ("colored_cloud.pcd", *colored_cloud_p, false);
+  writer.write<pcl::PointXYZRGB> ("first_cluster.pcd", *first_cluster, false);
   
   
   
