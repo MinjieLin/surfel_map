@@ -25,6 +25,7 @@
  #include <pcl/PointIndices.h>
  #include <pcl/cloud_iterator.h>
  #include <pcl/PolygonMesh.h>
+ #include <pcl/common/geometry.h>
 
 
 int main (int argc, char** argv)
@@ -41,9 +42,10 @@ int main (int argc, char** argv)
     pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster_p (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster_proj (new pcl::PointCloud<pcl::PointXYZRGB>);
-  //cl::CentroidPoint<pcl::PointXYZRGB>::Ptr centroid (new pcl::CentroidPoint<pcl::PointXYZRGB>);
+  //pcl::CentroidPoint<pcl::PointXYZRGB>::Ptr centroid (new pcl::CentroidPoint<pcl::PointXYZRGB>);
   
-  pcl::PointCloud<pcl::PointXYZ>::Ptr surfel_points (new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr surfel_points (new pcl::PointCloud<pcl::PointXYZRGB>);
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr konce (new pcl::PointCloud<pcl::PointXYZRGB>);
   
   pcl::PCDWriter writer;
   
@@ -281,6 +283,29 @@ int main (int argc, char** argv)
   cout<< "Centroid: "<< endl << centroid[0] << endl << centroid[1] << endl << centroid[2] << endl; 
   
   
+  pcl::PointXYZRGB end_point_1;
+  pcl::PointXYZRGB end_point_2;
+  
+  pcl::getMinMax3D (*first_cluster_proj, end_point_1, end_point_2);
+  
+  cout << "End point 1: " << end_point_1 << endl;
+  cout << "End point 2: " << end_point_2 << endl;
+  
+  Eigen::Vector3i end_point_1_p;
+  end_point_1_p = end_point_1.getRGBVector3i();
+  
+  Eigen::Vector3i end_point_2_p;
+  end_point_2_p = end_point_2.getRGBVector3i();
+  
+  konce->push_back(end_point_1);
+  konce->push_back(end_point_2);
+  
+  //float distance = pcl::geometry::distance(end_point_1, end_point_2);
+  
+  float distance = sqrtf(pow(end_point_1.values[0]-end_point_2.values[0],2)+pow(end_point_1.values[1]-end_point_2.values[1],2)+pow(end_point_1.values[2]-end_point_2.values[2],2));
+  //float distance = end_point_1-end_point_2;
+  cout << "Distance: " << distance << endl;
+  
   pcl::ModelCoefficients sphere_coeff;
   sphere_coeff.values.resize (4);    // We need 4 values
   sphere_coeff.values[0] = centroid[0];
@@ -307,24 +332,43 @@ int main (int argc, char** argv)
   extract_indices.filter (*first_cluster_p);
   
   
+  pcl::ModelCoefficients cone_coeff;
+  cone_coeff.values.resize (7);    // We need 7 values
+  cone_coeff.values[0] = centroid[0];
+  cone_coeff.values[1] = centroid[1];
+  cone_coeff.values[2] = centroid[2];
+  cone_coeff.values[3] = normal[0]*0.01;
+  cone_coeff.values[4] = normal[1]*0.01;
+  cone_coeff.values[5] = normal[2]*0.01;
+  cone_coeff.values[6] = 82; // degrees
+  
+  
   // Draw a surfel //
   
-  pcl::PointXYZ surfel_point(1, 1, 2);
+  pcl::PointXYZRGB surfel_point(1, 1, 2);
   surfel_points->push_back(surfel_point);
-  pcl::PointXYZ surfel_point1(-1, -1, -2);
+  pcl::PointXYZRGB surfel_point1(-1, -1, -2);
   surfel_points->push_back(surfel_point1);
-  pcl::PointXYZ surfel_point2(1, -1, 2);
+  pcl::PointXYZRGB surfel_point2(1, -1, 2);
   surfel_points->push_back(surfel_point2);
-  pcl::PointXYZ surfel_point3(0, 0, 0);
-  surfel_points->push_back(surfel_point3);
+  //pcl::PointXYZRGB surfel_point3(0, 0, 0);
+  //surfel_points->push_back(surfel_point3);
   
   std::vector<pcl::Vertices> polygons;
   pcl::Vertices triangle_;
   triangle_.vertices.resize (3);
-  triangle_.vertices[0] = 1;
-  triangle_.vertices[1] = 2;
-  triangle_.vertices[2] = 3;
+  triangle_.vertices[0] = 0;
+  triangle_.vertices[1] = 1;
+  triangle_.vertices[2] = 2;
   polygons.push_back(triangle_);
+  
+  pcl::Vertices triangle2_;
+  triangle2_.vertices.resize (3);
+  triangle2_.vertices[0] = 0;
+  triangle2_.vertices[1] = 1;
+  triangle2_.vertices[2] = 2;
+  polygons.push_back(triangle2_);
+  
   
     std::cout << "Surfel_points are "
             << surfel_points->width << " x " << surfel_points->height
@@ -337,12 +381,16 @@ int main (int argc, char** argv)
   //pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(first_cluster);
   //pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> single_color(first_cluster_p, 255, 0, 0);
   pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> single_color2(first_cluster_proj, 255, 255, 255);
+  pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> kolor_konce(konce, 200, 5, 5);
   
   //viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster, rgb, "all");
   //viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster_p, single_color, "inliers");
   viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster_proj, single_color2, "projected");
+  viewer->addPointCloud<pcl::PointXYZRGB> (konce, kolor_konce, "konce");
   
   //viewer->addSphere(centroid, 0.1, 0.5, 0.5, 0.5, "sphere");
+  viewer->addPolygonMesh<pcl::PointXYZRGB>(surfel_points, polygons, "mesz");
+  viewer->addCone(cone_coeff, "cone1");
   
   //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "all");
   //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "inliers");
@@ -357,8 +405,8 @@ int main (int argc, char** argv)
   
   //pcl::PolygonMesh surfel_mesh;
   
-  viewer->addPolygonMesh<pcl::PointXYZ>(surfel_points, polygons, "mesz");
-  viewer->addPointCloud<pcl::PointXYZ> (surfel_points, "poooints");
+  
+  //viewer->addPointCloud<pcl::PointXYZ> (surfel_points, "poooints");
   
   //Eigen::Matrix3f mat(1.0, 0.0, 0.0);
   //Eigen::Affine3f pose = Eigen::Affine3f::Identity();
@@ -368,6 +416,9 @@ int main (int argc, char** argv)
   //viewer->updateShapePose("surfel1",pose);
   
   viewer->setRepresentationToSurfaceForAllActors(); 
+  viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0.5, 0.5, 0, "mesz");
+  //viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING, pcl::visualization::PCL_VISUALIZER_SHADING_GOURAUD, "mesz");
+  //viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.5, "mesz");  
   
   
   //pcl::visualization::CloudViewer viewer2 ("Cluster viewer");
@@ -376,11 +427,11 @@ int main (int argc, char** argv)
   while (!viewer->wasStopped ())
   {
     viewer->spinOnce (100);
-    //boost::this_thread::sleep (boost::posix_time::microseconds (100000));
+    boost::this_thread::sleep (boost::posix_time::microseconds (100000));
   }
 
   
-  writer.write<pcl::PointXYZRGB> ("first_cluster.pcd", *first_cluster, false);
+  //writer.write<pcl::PointXYZRGB> ("first_cluster2.pcd", *first_cluster, false);
   
   
   
