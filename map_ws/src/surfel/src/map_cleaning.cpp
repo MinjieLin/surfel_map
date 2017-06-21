@@ -20,12 +20,12 @@
 #include <pcl/filters/project_inliers.h>
 #include <pcl/common/centroid.h>
 
- #include <pcl/point_cloud.h>
- #include <pcl/point_traits.h>
- #include <pcl/PointIndices.h>
- #include <pcl/cloud_iterator.h>
- #include <pcl/PolygonMesh.h>
- #include <pcl/common/geometry.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_traits.h>
+#include <pcl/PointIndices.h>
+#include <pcl/cloud_iterator.h>
+#include <pcl/PolygonMesh.h>
+#include <pcl/common/geometry.h>
 
 
 int main (int argc, char** argv)
@@ -39,10 +39,9 @@ int main (int argc, char** argv)
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::IndicesPtr indices (new std::vector<int>);
   
-    pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
+  pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster_p (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster_proj (new pcl::PointCloud<pcl::PointXYZRGB>);
-  //pcl::CentroidPoint<pcl::PointXYZRGB>::Ptr centroid (new pcl::CentroidPoint<pcl::PointXYZRGB>);
   
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr surfel_points (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr konce (new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -68,7 +67,6 @@ int main (int argc, char** argv)
   sor.filter (*cloud_filtered);
          
   for (int i = 0; i < cloud_filtered->width * cloud_filtered->height; i+=30) indices->push_back(i);
-  //for (int i = 0; i < 100000; i+=1) indices->push_back(i);
   
   pcl::VoxelGrid<pcl::PointXYZRGB> vg;
   vg.setInputCloud (cloud_filtered);
@@ -226,7 +224,7 @@ int main (int argc, char** argv)
     return (-1);
   }
   std::cout << "Loaded cloud is "
-            << cloud->width << " x " << cloud->height
+            << first_cluster->width << " x " << first_cluster->height
             << "."
             << std::endl;
   
@@ -262,13 +260,7 @@ int main (int argc, char** argv)
   std::cerr << "Size of first cluster: " << first_cluster->size () << std::endl;
   
   Eigen::Vector3f normal(coefficients->values[0], coefficients->values[1], coefficients->values[2]);
-  Eigen::Vector3f disc(0,0,1);
-  
-  float dot_product = disc.dot(normal);
-
-  Eigen::Vector3f z = disc.cross(normal);
-  
-
+ 
   
    // Create the filtering object
   pcl::ProjectInliers<pcl::PointXYZRGB> proj;
@@ -295,32 +287,11 @@ int main (int argc, char** argv)
   konce->push_back(end_point_1);
   konce->push_back(end_point_2);
   
-  //float distance = pcl::geometry::distance(end_point_1, end_point_2);
-  
   float distance = sqrtf(pow(end_point_1.x-end_point_2.x,2)+pow(end_point_1.y-end_point_2.y,2)+pow(end_point_1.z-end_point_2.z,2));
-  //float distance = end_point_1-end_point_2;
   float radius=distance/2;
   
   cout << "Distance: " << distance << endl;
   cout << "Surfel radius: " << radius << endl;
-  
-  pcl::ModelCoefficients sphere_coeff;
-  sphere_coeff.values.resize (4);    // We need 4 values
-  sphere_coeff.values[0] = centroid[0];
-  sphere_coeff.values[1] = centroid[1];
-  sphere_coeff.values[2] = centroid[2];
-  sphere_coeff.values[3] = 0.1;
-
-  
-  pcl::ModelCoefficients cylinder_coeff;
-  cylinder_coeff.values.resize (7);    // We need 7 values
-  cylinder_coeff.values[0] = centroid[0];
-  cylinder_coeff.values[1] = centroid[1];
-  cylinder_coeff.values[2] = centroid[2];
-  cylinder_coeff.values[3] = coefficients->values[0];
-  cylinder_coeff.values[4] = coefficients->values[1];
-  cylinder_coeff.values[5] = coefficients->values[2];
-  cylinder_coeff.values[6] = 0.1;
   
 
   pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices;
@@ -330,8 +301,9 @@ int main (int argc, char** argv)
   extract_indices.filter (*first_cluster_p);
   
   int deg=82;
-  float rad = 1.43116999;
+  float rad = 1.43116999; //deg in radians
   
+  // Draw a surfel //
   pcl::ModelCoefficients cone_coeff;
   cone_coeff.values.resize (7);    // We need 7 values
   cone_coeff.values[0] = centroid[0];
@@ -341,88 +313,24 @@ int main (int argc, char** argv)
   cone_coeff.values[4] = normal[1]*(radius/tan(rad));
   cone_coeff.values[5] = normal[2]*(radius/tan(rad));
   cone_coeff.values[6] = deg; // degrees
-  
-  
-  // Draw a surfel //
-  
-  pcl::PointXYZRGB surfel_point(1, 1, 2);
-  surfel_points->push_back(surfel_point);
-  pcl::PointXYZRGB surfel_point1(-1, -1, -2);
-  surfel_points->push_back(surfel_point1);
-  pcl::PointXYZRGB surfel_point2(1, -1, 2);
-  surfel_points->push_back(surfel_point2);
-  //pcl::PointXYZRGB surfel_point3(0, 0, 0);
-  //surfel_points->push_back(surfel_point3);
-  
-  std::vector<pcl::Vertices> polygons;
-  pcl::Vertices triangle_;
-  triangle_.vertices.resize (3);
-  triangle_.vertices[0] = 0;
-  triangle_.vertices[1] = 1;
-  triangle_.vertices[2] = 2;
-  polygons.push_back(triangle_);
-  
-  pcl::Vertices triangle2_;
-  triangle2_.vertices.resize (3);
-  triangle2_.vertices[0] = 0;
-  triangle2_.vertices[1] = 1;
-  triangle2_.vertices[2] = 2;
-  polygons.push_back(triangle2_);
-  
-  
-    std::cout << "Surfel_points are "
-            << surfel_points->width << " x " << surfel_points->height
-            << "."
-            << std::endl;
-  
-  
+
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
   
-  //pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(first_cluster);
-  //pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> single_color(first_cluster_p, 255, 0, 0);
   pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> single_color2(first_cluster_proj, 255, 255, 255);
   pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> kolor_konce(konce, 200, 5, 5);
   
-  //viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster, rgb, "all");
-  //viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster_p, single_color, "inliers");
   viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster_proj, single_color2, "projected");
   viewer->addPointCloud<pcl::PointXYZRGB> (konce, kolor_konce, "konce");
   
-  //viewer->addSphere(centroid, 0.1, 0.5, 0.5, 0.5, "sphere");
-  viewer->addPolygonMesh<pcl::PointXYZRGB>(surfel_points, polygons, "mesz");
   viewer->addCone(cone_coeff, "cone1");
   
-  //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "all");
-  //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "inliers");
   viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "projected");
   
   //viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal> (cloud_filtered_p, normals_p, 20, 0.05, "normals");
   viewer->addCoordinateSystem (1.0);
   viewer->initCameraParameters ();
   
- 
-  //viewer->addCylinder(cylinder_coeff, "cylinder");
-  
-  //pcl::PolygonMesh surfel_mesh;
-  
-  
-  //viewer->addPointCloud<pcl::PointXYZ> (surfel_points, "poooints");
-  
-  //Eigen::Matrix3f mat(1.0, 0.0, 0.0);
-  //Eigen::Affine3f pose = Eigen::Affine3f::Identity();
-  //pose = pose.rotate (Eigen::AngleAxisf (dot_product, z));
-
-    
-  //viewer->updateShapePose("surfel1",pose);
-  
   viewer->setRepresentationToSurfaceForAllActors(); 
-  viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0.5, 0.5, 0, "mesz");
-  //viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING, pcl::visualization::PCL_VISUALIZER_SHADING_GOURAUD, "mesz");
-  //viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.5, "mesz");  
-  
-  
-  //pcl::visualization::CloudViewer viewer2 ("Cluster viewer");
-  //viewer2.showCloud(first_cluster);
   
   while (!viewer->wasStopped ())
   {
