@@ -291,20 +291,18 @@ int main (int argc, char** argv)
   cout << "End point 1: " << end_point_1 << endl;
   cout << "End point 2: " << end_point_2 << endl;
   
-  Eigen::Vector3i end_point_1_p;
-  end_point_1_p = end_point_1.getRGBVector3i();
-  
-  Eigen::Vector3i end_point_2_p;
-  end_point_2_p = end_point_2.getRGBVector3i();
   
   konce->push_back(end_point_1);
   konce->push_back(end_point_2);
   
   //float distance = pcl::geometry::distance(end_point_1, end_point_2);
   
-  float distance = sqrtf(pow(end_point_1.values[0]-end_point_2.values[0],2)+pow(end_point_1.values[1]-end_point_2.values[1],2)+pow(end_point_1.values[2]-end_point_2.values[2],2));
+  float distance = sqrtf(pow(end_point_1.x-end_point_2.x,2)+pow(end_point_1.y-end_point_2.y,2)+pow(end_point_1.z-end_point_2.z,2));
   //float distance = end_point_1-end_point_2;
+  float radius=distance/2;
+  
   cout << "Distance: " << distance << endl;
+  cout << "Surfel radius: " << radius << endl;
   
   pcl::ModelCoefficients sphere_coeff;
   sphere_coeff.values.resize (4);    // We need 4 values
@@ -319,9 +317,9 @@ int main (int argc, char** argv)
   cylinder_coeff.values[0] = centroid[0];
   cylinder_coeff.values[1] = centroid[1];
   cylinder_coeff.values[2] = centroid[2];
-  cylinder_coeff.values[3] = coefficients->values[0]*0.01;
-  cylinder_coeff.values[4] = coefficients->values[1]*0.01;
-  cylinder_coeff.values[5] = coefficients->values[2]*0.01;
+  cylinder_coeff.values[3] = coefficients->values[0];
+  cylinder_coeff.values[4] = coefficients->values[1];
+  cylinder_coeff.values[5] = coefficients->values[2];
   cylinder_coeff.values[6] = 0.1;
   
 
@@ -331,16 +329,18 @@ int main (int argc, char** argv)
   extract_indices.setNegative (false);
   extract_indices.filter (*first_cluster_p);
   
+  int deg=82;
+  float rad = 1.43116999;
   
   pcl::ModelCoefficients cone_coeff;
   cone_coeff.values.resize (7);    // We need 7 values
   cone_coeff.values[0] = centroid[0];
   cone_coeff.values[1] = centroid[1];
   cone_coeff.values[2] = centroid[2];
-  cone_coeff.values[3] = normal[0]*0.01;
-  cone_coeff.values[4] = normal[1]*0.01;
-  cone_coeff.values[5] = normal[2]*0.01;
-  cone_coeff.values[6] = 82; // degrees
+  cone_coeff.values[3] = normal[0]*(radius/tan(rad));
+  cone_coeff.values[4] = normal[1]*(radius/tan(rad));
+  cone_coeff.values[5] = normal[2]*(radius/tan(rad));
+  cone_coeff.values[6] = deg; // degrees
   
   
   // Draw a surfel //
