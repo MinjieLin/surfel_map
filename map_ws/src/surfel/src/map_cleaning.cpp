@@ -39,16 +39,9 @@ int main (int argc, char** argv)
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::IndicesPtr indices (new std::vector<int>);
   
-  pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
-  pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster_p (new pcl::PointCloud<pcl::PointXYZRGB>);
-  pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster_proj (new pcl::PointCloud<pcl::PointXYZRGB>);
-  
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr surfel_points (new pcl::PointCloud<pcl::PointXYZRGB>);
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr konce (new pcl::PointCloud<pcl::PointXYZRGB>);
   
   pcl::PCDWriter writer;
   
-  if (0) {
   if (pcl::io::loadPCDFile<pcl::PointXYZRGB> ("cloud3-3-2-2017.pcd", *cloud) == -1) //* load the file
   {
     PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
@@ -76,67 +69,6 @@ int main (int argc, char** argv)
 
   std::cerr << "Cloud after filtering: " << std::endl;
   std::cerr << *cloud_filtered << std::endl;
-
-  
-
-  // Create the normal estimation class, and pass the input dataset to it
-  //pcl::NormalEstimation<pcl::PointXYZRGB, pcl::Normal> ne;
-  //ne.setInputCloud (cloud_filtered);
-  //ne.setIndices(indices);
-
-  // Create an empty kdtree representation, and pass it to the normal estimation object.
-  // Its content will be filled inside the object, based on the given input dataset (as no other search surface is given).
-  //pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB> ());
-  //ne.setSearchMethod (tree);
-
-  // Output datasets
-  //pcl::PointCloud<pcl::Normal>::Ptr cloud_normals (new pcl::PointCloud<pcl::Normal>);
-  
-
-  // Use all neighbors in a sphere of radius 3cm
-  //ne.setRadiusSearch (0.1);
-
-  // Compute the features
-  //ne.compute (*cloud_normals);
-  
-  //pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normals (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-  
-  //pcl::concatenateFields(*cloud_filtered, *cloud_normals, *cloud_with_normals);
-  
-  
-  //one plane
-  /*pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
-  pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
-  // Create the segmentation object
-  pcl::SACSegmentation<pcl::PointXYZRGB> seg;
-  // Optional
-  seg.setOptimizeCoefficients (true);
-  // Mandatory
-  seg.setModelType (pcl::SACMODEL_PLANE);
-  seg.setMethodType (pcl::SAC_RANSAC);
-  seg.setDistanceThreshold (0.1);
-
-  seg.setInputCloud (cloud_filtered);
-  seg.segment (*inliers, *coefficients);
-  
-  // Extract the inliers
-  pcl::ExtractIndices<pcl::PointXYZRGB> extract;
-  extract.setInputCloud (cloud_filtered);
-  extract.setIndices (inliers);
-  extract.setNegative (false);
-  extract.filter (*cloud_p);
-  
-  extract.setNegative (true);
-  extract.filter (*cloud_filtered_p);*/
-  
-  
-  //bez podlogi i sufitu
-  /*pcl::PassThrough<pcl::PointXYZRGB> pass2;
-  pass2.setInputCloud (cloud_filtered);
-  pass2.setFilterFieldName ("z");
-  pass2.setFilterLimits (0.1, 2.4);
-  //pass.setFilterLimitsNegative (true);
-  pass2.filter (*podloga);*/
 
 
   //plaszczyzny
@@ -185,64 +117,44 @@ int main (int argc, char** argv)
   pcl::PointCloud <pcl::PointXYZRGB>::Ptr colored_cloud_p (new pcl::PointCloud<pcl::PointXYZRGB>);
   
   std::cout << "Number of clusters is equal to " << clusters.size () << std::endl;
-  std::cout << "First cluster has " << clusters[3].indices.size () << " points." << endl;
- 
-   // build the condition
-  int rMin = 253;
-  int gMax = 1;
-  int bMax = 1;
-  pcl::ConditionAnd<pcl::PointXYZRGB>::Ptr color_cond (new pcl::ConditionAnd<pcl::PointXYZRGB> ());
-  color_cond->addComparison (pcl::PackedRGBComparison<pcl::PointXYZRGB>::Ptr (new pcl::PackedRGBComparison<pcl::PointXYZRGB> ("r", pcl::ComparisonOps::LT, rMin)));
-  color_cond->addComparison (pcl::PackedRGBComparison<pcl::PointXYZRGB>::Ptr (new pcl::PackedRGBComparison<pcl::PointXYZRGB> ("g", pcl::ComparisonOps::GT, gMax)));
-  color_cond->addComparison (pcl::PackedRGBComparison<pcl::PointXYZRGB>::Ptr (new pcl::PackedRGBComparison<pcl::PointXYZRGB> ("b", pcl::ComparisonOps::GT, bMax)));
-
-  // build the filter
-  pcl::ConditionalRemoval<pcl::PointXYZRGB> condrem (color_cond);
-  condrem.setInputCloud (colored_cloud);
-  condrem.setKeepOrganized(true);
-
-  // apply filter
-  condrem.filter (*colored_cloud_p); 
+  std::cout << "First cluster has " << clusters[0].indices.size () << " points." << endl;
   
-  // view only the first cluster
-  pcl::IndicesPtr clusterindices (new std::vector<int>(clusters[3].indices));
+  pcl::ModelCoefficients cone_coeffs[clusters.size()];
+ 
+ 
   pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster_p (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster_proj (new pcl::PointCloud<pcl::PointXYZRGB>);
   
-  pcl::ExtractIndices<pcl::PointXYZRGB> extract0;
-  extract0.setInputCloud (colored_cloud);
-  extract0.setIndices (clusterindices);
-  extract0.setNegative (false);
-  extract0.filter (*first_cluster);
-  
-}
-  
-  if (pcl::io::loadPCDFile<pcl::PointXYZRGB> ("first_cluster.pcd", *first_cluster) == -1) //* load the file
-  {
-    PCL_ERROR ("Couldn't read file \n");
-    return (-1);
-  }
-  std::cout << "Loaded cloud is "
-            << first_cluster->width << " x " << first_cluster->height
-            << "."
-            << std::endl;
-  
-  pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
-  pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
-  // Create the segmentation object
-  pcl::SACSegmentation<pcl::PointXYZRGB> seg;
-  
-  
-  // Optional
-  seg.setOptimizeCoefficients (true);
-  // Mandatory
-  seg.setModelType (pcl::SACMODEL_PLANE);
-  seg.setMethodType (pcl::SAC_RANSAC);
-  seg.setDistanceThreshold (0.1);
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr surfel_points (new pcl::PointCloud<pcl::PointXYZRGB>); 
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr konce (new pcl::PointCloud<pcl::PointXYZRGB>);
+ 
+  for(int i=0; i<clusters.size(); i++){
+    
+    pcl::IndicesPtr clusterindices (new std::vector<int>(clusters[i].indices));
+    
+    pcl::ExtractIndices<pcl::PointXYZRGB> extract0;
+    extract0.setInputCloud (colored_cloud);
+    extract0.setIndices (clusterindices);
+    extract0.setNegative (false);
+    extract0.filter (*first_cluster);
+    
 
-  seg.setInputCloud (first_cluster);
-  seg.segment (*inliers, *coefficients);
+    pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
+    pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
+    // Create the segmentation object
+    pcl::SACSegmentation<pcl::PointXYZRGB> seg;
+    
+    
+    // Optional
+    seg.setOptimizeCoefficients (true);
+    // Mandatory
+    seg.setModelType (pcl::SACMODEL_PLANE);
+    seg.setMethodType (pcl::SAC_RANSAC);
+    seg.setDistanceThreshold (0.1);
+  
+    seg.setInputCloud (first_cluster);
+    seg.segment (*inliers, *coefficients);
   
   
   if (inliers->indices.size () == 0)
@@ -251,18 +163,18 @@ int main (int argc, char** argv)
     return (-1);
   }
 
-  std::cerr << "Model coefficients: " << coefficients->values[0] << " " 
-                                      << coefficients->values[1] << " "
-                                      << coefficients->values[2] << " " 
-                                      << coefficients->values[3] << std::endl;
-                                      
-  std::cerr << "Model inliers: " << inliers->indices.size () << std::endl;
-  std::cerr << "Size of first cluster: " << first_cluster->size () << std::endl;
+  //std::cerr << "Model coefficients: " << coefficients->values[0] << " " 
+  //                                    << coefficients->values[1] << " "
+  //                                    << coefficients->values[2] << " " 
+  //                                    << coefficients->values[3] << std::endl;
+  //                                    
+  //std::cerr << "Model inliers: " << inliers->indices.size () << std::endl;
+  //std::cerr << "Size of first cluster: " << first_cluster->size () << std::endl;
   
   Eigen::Vector3f normal(coefficients->values[0], coefficients->values[1], coefficients->values[2]);
- 
   
-   // Create the filtering object
+  
+     // Create the filtering object
   pcl::ProjectInliers<pcl::PointXYZRGB> proj;
   proj.setModelType (pcl::SACMODEL_PLANE);
   proj.setInputCloud (first_cluster);
@@ -272,7 +184,7 @@ int main (int argc, char** argv)
   Eigen::Vector4f centroid;
   pcl::compute3DCentroid (*first_cluster_proj, centroid);
   
-  cout<< "Centroid: "<< endl << centroid[0] << endl << centroid[1] << endl << centroid[2] << endl; 
+  //cout<< "Centroid: "<< endl << centroid[0] << endl << centroid[1] << endl << centroid[2] << endl; 
   
   
   pcl::PointXYZRGB end_point_1;
@@ -280,18 +192,40 @@ int main (int argc, char** argv)
   
   pcl::getMinMax3D (*first_cluster_proj, end_point_1, end_point_2);
   
-  cout << "End point 1: " << end_point_1 << endl;
-  cout << "End point 2: " << end_point_2 << endl;
+  //cout << "End point 1: " << end_point_1 << endl;
+  //cout << "End point 2: " << end_point_2 << endl;
   
   
   konce->push_back(end_point_1);
   konce->push_back(end_point_2);
   
   float distance = sqrtf(pow(end_point_1.x-end_point_2.x,2)+pow(end_point_1.y-end_point_2.y,2)+pow(end_point_1.z-end_point_2.z,2));
-  float radius=distance/2;
+  float radius=distance/4;
   
-  cout << "Distance: " << distance << endl;
-  cout << "Surfel radius: " << radius << endl;
+  int old_percentage=0;
+  int old_k = 0;
+  for(float k=radius; k<distance/2; k+=0.05){
+    std::cout << "Badany promien: " << k << endl;
+    
+    int percentage=0;
+    for(int i=0; i<first_cluster_proj->size(); i++){
+      pcl::PointXYZRGB poi = first_cluster_proj->points[i];
+      if((pow(poi.x-centroid[0],2)+pow(poi.y-centroid[1],2)+pow(poi.z-centroid[2],2))<pow(k,2)){
+        percentage++;
+      }
+    }
+    percentage=percentage*100;
+    percentage=percentage/first_cluster_proj->size();
+    if(percentage>old_percentage && percentage<90){
+      old_percentage=percentage;
+      old_k=k;
+      radius=k;
+    }
+  }
+  
+  
+  //cout << "Distance: " << distance << endl;
+  //cout << "Surfel radius: " << radius << endl;
   
 
   pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices;
@@ -304,15 +238,17 @@ int main (int argc, char** argv)
   float rad = 1.43116999; //deg in radians
   
   // Draw a surfel //
-  pcl::ModelCoefficients cone_coeff;
-  cone_coeff.values.resize (7);    // We need 7 values
-  cone_coeff.values[0] = centroid[0];
-  cone_coeff.values[1] = centroid[1];
-  cone_coeff.values[2] = centroid[2];
-  cone_coeff.values[3] = normal[0]*(radius/tan(rad));
-  cone_coeff.values[4] = normal[1]*(radius/tan(rad));
-  cone_coeff.values[5] = normal[2]*(radius/tan(rad));
-  cone_coeff.values[6] = deg; // degrees
+  //pcl::ModelCoefficients cone_coeff;
+  cone_coeffs[i].values.resize (7);    // We need 7 values
+  cone_coeffs[i].values[0] = centroid[0];
+  cone_coeffs[i].values[1] = centroid[1];
+  cone_coeffs[i].values[2] = centroid[2];
+  cone_coeffs[i].values[3] = normal[0]*(radius/tan(rad));
+  cone_coeffs[i].values[4] = normal[1]*(radius/tan(rad));
+  cone_coeffs[i].values[5] = normal[2]*(radius/tan(rad));
+  cone_coeffs[i].values[6] = deg; // degrees
+  
+  }
 
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
   
@@ -321,8 +257,12 @@ int main (int argc, char** argv)
   
   viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster_proj, single_color2, "projected");
   viewer->addPointCloud<pcl::PointXYZRGB> (konce, kolor_konce, "konce");
-  
-  viewer->addCone(cone_coeff, "cone1");
+  for(int i=0; i<clusters.size(); i++){
+    std::string name="cone";
+    name+=std::to_string(i);
+    cout<<"Nazywa sie: "<<name<<endl;
+    viewer->addCone(cone_coeffs[i], name);
+  }
   
   viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "projected");
   
@@ -338,11 +278,7 @@ int main (int argc, char** argv)
     boost::this_thread::sleep (boost::posix_time::microseconds (100000));
   }
 
-  
   //writer.write<pcl::PointXYZRGB> ("first_cluster2.pcd", *first_cluster, false);
-  
-  
-  
 
   return (0);
 }
