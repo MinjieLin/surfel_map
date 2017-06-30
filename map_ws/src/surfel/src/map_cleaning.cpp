@@ -204,24 +204,34 @@ int main (int argc, char** argv)
   
   int old_percentage=0;
   int old_k = 0;
+  float last_gain = 0; // stosunek ilosci punktow do powierzchni
+  pcl::IndicesPtr probably_used_points (new std::vector<int>);
   for(float k=radius; k<distance/2; k+=0.05){
+    pcl::IndicesPtr used_points (new std::vector<int>);
     std::cout << "Badany promien: " << k << endl;
-    
+    float gain=0;
     int percentage=0;
     for(int i=0; i<first_cluster_proj->size(); i++){
       pcl::PointXYZRGB poi = first_cluster_proj->points[i];
       if((pow(poi.x-centroid[0],2)+pow(poi.y-centroid[1],2)+pow(poi.z-centroid[2],2))<pow(k,2)){
         percentage++;
+        used_points->push_back(i);
       }
+      gain = percentage/(k*k);
     }
     percentage=percentage*100;
     percentage=percentage/first_cluster_proj->size();
-    if(percentage>old_percentage && percentage<90){
+    //if(percentage>old_percentage && percentage<90){
+    if(gain>last_gain){
+      last_gain = gain;
       old_percentage=percentage;
       old_k=k;
       radius=k;
+      probably_used_points=used_points;
     }
+    else break;
   }
+  std::cout << "Wybrany promien: " << radius << ", rozpietosc chmury: " << distance << endl;
   
   
   //cout << "Distance: " << distance << endl;
