@@ -119,16 +119,18 @@ int main (int argc, char** argv)
   std::cout << "Number of clusters is equal to " << clusters.size () << std::endl;
   std::cout << "First cluster has " << clusters[0].indices.size () << " points." << endl;
   
-  pcl::ModelCoefficients cone_coeffs[clusters.size()];
+  std::vector<pcl::ModelCoefficients> cone_coeffs;
  
  
-  pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
-  pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster_p (new pcl::PointCloud<pcl::PointXYZRGB>);
-  pcl::PointCloud <pcl::PointXYZRGB>::Ptr first_cluster_proj (new pcl::PointCloud<pcl::PointXYZRGB>);
+  pcl::PointCloud <pcl::PointXYZRGB>::Ptr current_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
+  pcl::PointCloud <pcl::PointXYZRGB>::Ptr current_cluster_p (new pcl::PointCloud<pcl::PointXYZRGB>);
+  pcl::PointCloud <pcl::PointXYZRGB>::Ptr current_cluster_proj (new pcl::PointCloud<pcl::PointXYZRGB>);
   
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr surfel_points (new pcl::PointCloud<pcl::PointXYZRGB>); 
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr konce (new pcl::PointCloud<pcl::PointXYZRGB>);
  
+ 
+  int j=0;
   for(int i=0; i<clusters.size(); i++){
     
     pcl::IndicesPtr clusterindices (new std::vector<int>(clusters[i].indices));
@@ -137,7 +139,7 @@ int main (int argc, char** argv)
     extract0.setInputCloud (colored_cloud);
     extract0.setIndices (clusterindices);
     extract0.setNegative (false);
-    extract0.filter (*first_cluster);
+    extract0.filter (*current_cluster);
     
 
     pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
@@ -153,7 +155,7 @@ int main (int argc, char** argv)
     seg.setMethodType (pcl::SAC_RANSAC);
     seg.setDistanceThreshold (0.1);
   
-    seg.setInputCloud (first_cluster);
+    seg.setInputCloud (current_cluster);
     seg.segment (*inliers, *coefficients);
   
   
@@ -177,97 +179,108 @@ int main (int argc, char** argv)
      // Create the filtering object
   pcl::ProjectInliers<pcl::PointXYZRGB> proj;
   proj.setModelType (pcl::SACMODEL_PLANE);
-  proj.setInputCloud (first_cluster);
+  proj.setInputCloud (current_cluster);
   proj.setModelCoefficients (coefficients);
-  proj.filter (*first_cluster_proj);
+  proj.filter (*current_cluster_proj);
   
-  Eigen::Vector4f centroid;
-  pcl::compute3DCentroid (*first_cluster_proj, centroid);
+  while(current_cluster_proj->size()>20){
+    Eigen::Vector4f centroid;
+    pcl::compute3DCentroid (*current_cluster_proj, centroid);
   
-  //cout<< "Centroid: "<< endl << centroid[0] << endl << centroid[1] << endl << centroid[2] << endl; 
-  
-  
-  pcl::PointXYZRGB end_point_1;
-  pcl::PointXYZRGB end_point_2;
-  
-  pcl::getMinMax3D (*first_cluster_proj, end_point_1, end_point_2);
-  
-  //cout << "End point 1: " << end_point_1 << endl;
-  //cout << "End point 2: " << end_point_2 << endl;
+    //cout<< "Centroid: "<< endl << centroid[0] << endl << centroid[1] << endl << centroid[2] << endl; 
   
   
-  konce->push_back(end_point_1);
-  konce->push_back(end_point_2);
+    pcl::PointXYZRGB end_point_1;
+    pcl::PointXYZRGB end_point_2;
   
-  float distance = sqrtf(pow(end_point_1.x-end_point_2.x,2)+pow(end_point_1.y-end_point_2.y,2)+pow(end_point_1.z-end_point_2.z,2));
-  float radius=distance/4;
+    pcl::getMinMax3D (*current_cluster_proj, end_point_1, end_point_2);
   
-  int old_percentage=0;
-  int old_k = 0;
-  float last_gain = 0; // stosunek ilosci punktow do powierzchni
-  pcl::IndicesPtr probably_used_points (new std::vector<int>);
-  for(float k=radius; k<distance/2; k+=0.05){
-    pcl::IndicesPtr used_points (new std::vector<int>);
-    std::cout << "Badany promien: " << k << endl;
-    float gain=0;
-    int percentage=0;
-    for(int i=0; i<first_cluster_proj->size(); i++){
-      pcl::PointXYZRGB poi = first_cluster_proj->points[i];
-      if((pow(poi.x-centroid[0],2)+pow(poi.y-centroid[1],2)+pow(poi.z-centroid[2],2))<pow(k,2)){
-        percentage++;
-        used_points->push_back(i);
+    //cout << "End point 1: " << end_point_1 << endl;
+    //cout << "End point 2: " << end_point_2 << endl;
+    
+    int v1 = rand() % current_cluster_proj->size();
+    pcl::PointXYZRGB surf_center;
+    surf_center=current_cluster_proj->points[v1];
+    
+  
+    konce->push_back(end_point_1);
+    konce->push_back(end_point_2);
+  
+    float distance = sqrtf(pow(end_point_1.x-end_point_2.x,2)+pow(end_point_1.y-end_point_2.y,2)+pow(end_point_1.z-end_point_2.z,2));
+    float radius=distance/4;
+  
+    int old_percentage=0;
+    int old_k = 0;
+    float last_gain = 0; // stosunek ilosci punktow do powierzchni
+    pcl::IndicesPtr probably_used_points (new std::vector<int>);
+    for(float k=radius; k<distance/2; k+=0.05){
+      pcl::IndicesPtr used_points (new std::vector<int>);
+      std::cout << "Badany promien: " << k << endl;
+      float gain=0;
+      int percentage=0;
+      for(int i=0; i<current_cluster_proj->size(); i++){
+        pcl::PointXYZRGB poi = current_cluster_proj->points[i];
+        if((pow(poi.x-surf_center.x,2)+pow(poi.y-surf_center.y,2)+pow(poi.z-surf_center.z,2))<pow(k,2)){
+          percentage++;
+          used_points->push_back(i);
+        }
+        gain = percentage/(k*k);
       }
-      gain = percentage/(k*k);
+      percentage=percentage*100;
+      percentage=percentage/current_cluster_proj->size();
+      //if(percentage>old_percentage && percentage<90){
+      if(gain>last_gain){
+        last_gain = gain;
+        old_percentage=percentage;
+        old_k=k;
+        radius=k;
+        probably_used_points=used_points;
+        
+      }
+      else break;
     }
-    percentage=percentage*100;
-    percentage=percentage/first_cluster_proj->size();
-    //if(percentage>old_percentage && percentage<90){
-    if(gain>last_gain){
-      last_gain = gain;
-      old_percentage=percentage;
-      old_k=k;
-      radius=k;
-      probably_used_points=used_points;
-    }
-    else break;
-  }
-  std::cout << "Wybrany promien: " << radius << ", rozpietosc chmury: " << distance << endl;
+    std::cout << "Wybrany promien: " << radius << ", rozpietosc chmury: " << distance << endl;
   
   
-  //cout << "Distance: " << distance << endl;
-  //cout << "Surfel radius: " << radius << endl;
+    //cout << "Distance: " << distance << endl;
+    //cout << "Surfel radius: " << radius << endl;
   
 
-  pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices;
-  extract_indices.setInputCloud (first_cluster);
-  extract_indices.setIndices (inliers);
-  extract_indices.setNegative (false);
-  extract_indices.filter (*first_cluster_p);
+    pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices;
+    extract_indices.setInputCloud (current_cluster_proj);
+    extract_indices.setIndices (probably_used_points);
+    extract_indices.setNegative (true);
+    extract_indices.filter (*current_cluster_proj);
   
-  int deg=82;
-  float rad = 1.43116999; //deg in radians
+    int deg=82;
+    float rad = 1.43116999; //deg in radians
   
-  // Draw a surfel //
-  //pcl::ModelCoefficients cone_coeff;
-  cone_coeffs[i].values.resize (7);    // We need 7 values
-  cone_coeffs[i].values[0] = centroid[0];
-  cone_coeffs[i].values[1] = centroid[1];
-  cone_coeffs[i].values[2] = centroid[2];
-  cone_coeffs[i].values[3] = normal[0]*(radius/tan(rad));
-  cone_coeffs[i].values[4] = normal[1]*(radius/tan(rad));
-  cone_coeffs[i].values[5] = normal[2]*(radius/tan(rad));
-  cone_coeffs[i].values[6] = deg; // degrees
+    // Draw a surfel //
+    pcl::ModelCoefficients cone_coeff;
+    cone_coeff.values.resize (7);    // We need 7 values
+    cone_coeff.values[0] = surf_center.x;
+    cone_coeff.values[1] = surf_center.y;
+    cone_coeff.values[2] = surf_center.z;
+    cone_coeff.values[3] = normal[0]*(radius/tan(rad));
+    cone_coeff.values[4] = normal[1]*(radius/tan(rad));
+    cone_coeff.values[5] = normal[2]*(radius/tan(rad));
+    cone_coeff.values[6] = deg; // degrees
+    
+    cone_coeffs.push_back(cone_coeff);
+    }
+  
+  
   
   }
 
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
   
-  pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> single_color2(first_cluster_proj, 255, 255, 255);
+  pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> single_color2(current_cluster_proj, 255, 255, 255);
   pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> kolor_konce(konce, 200, 5, 5);
   
-  viewer->addPointCloud<pcl::PointXYZRGB> (first_cluster_proj, single_color2, "projected");
+  viewer->addPointCloud<pcl::PointXYZRGB> (current_cluster_proj, single_color2, "projected");
   viewer->addPointCloud<pcl::PointXYZRGB> (konce, kolor_konce, "konce");
-  for(int i=0; i<clusters.size(); i++){
+  for(int i=0; i<cone_coeffs.size(); i++){
     std::string name="cone";
     name+=std::to_string(i);
     cout<<"Nazywa sie: "<<name<<endl;
