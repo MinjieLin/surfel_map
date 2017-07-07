@@ -268,9 +268,6 @@ int main (int argc, char** argv)
     
     cone_coeffs.push_back(cone_coeff);
     }
-  
-  
-  
   }
 
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
@@ -292,6 +289,20 @@ int main (int argc, char** argv)
     cout<<"Nazywa sie: "<<name<<endl;
     viewer->addCone(cone_coeffs[i], name);
   }
+  
+  ofstream surfel_list;
+  surfel_list.open ("surfels.txt");
+  for(int i=0; i<cone_coeffs.size(); i++){
+    for(int j=0; j<=6; j++){
+      surfel_list << cone_coeffs[i].values[j] << " ";
+    }
+    surfel_list << endl;
+    
+  
+  }
+  
+  surfel_list.close();
+  
   
   viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "projected");
   
