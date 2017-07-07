@@ -278,6 +278,12 @@ int main (int argc, char** argv)
   pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> single_color2(current_cluster_proj, 255, 255, 255);
   pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> kolor_konce(konce, 200, 5, 5);
   
+  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_filtered);
+  viewer->addPointCloud<pcl::PointXYZRGB> (cloud_filtered, rgb, "all");
+  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "all");
+
+  
+  
   viewer->addPointCloud<pcl::PointXYZRGB> (current_cluster_proj, single_color2, "projected");
   viewer->addPointCloud<pcl::PointXYZRGB> (konce, kolor_konce, "konce");
   for(int i=0; i<cone_coeffs.size(); i++){
@@ -294,6 +300,16 @@ int main (int argc, char** argv)
   viewer->initCameraParameters ();
   
   viewer->setRepresentationToSurfaceForAllActors(); 
+  for(int i=0; i<cone_coeffs.size(); i++){
+    std::string name="cone";
+    name+=std::to_string(i);
+    float r,g,b, sum;
+    sum = cone_coeffs[i].values[3] + cone_coeffs[i].values[4] + cone_coeffs[i].values[5];
+    r = cone_coeffs[i].values[3]/sum;
+    g = cone_coeffs[i].values[4]/sum;
+    b = cone_coeffs[i].values[5]/sum;
+    viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, r, g, b, name);
+  }
   
   while (!viewer->wasStopped ())
   {
