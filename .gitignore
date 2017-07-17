@@ -8,3 +8,5 @@
 *~
 *.ply
 .catkin_workspace
+map_ws/surfels.txt
+
