@@ -54,13 +54,6 @@ int main (int argc, char** argv)
   normal_estimator.setInputCloud (cloud_filtered);
   normal_estimator.setKSearch (50);
   normal_estimator.compute (*normals);
-
-  //pcl::IndicesPtr indices2 (new std::vector <int>);
-  //pcl::PassThrough<pcl::PointXYZRGB> pass;
-  //pass.setInputCloud (cloud_smaller);
-  //pass.setFilterFieldName ("z");
-  //pass.setFilterLimits (0.0, 1.0);
-  //pass.filter (*indices2);
   
   pcl::ExtractIndices<pcl::PointXYZRGB> extract;
   extract.setInputCloud (cloud_filtered);
@@ -139,14 +132,6 @@ int main (int argc, char** argv)
     return (-1);
   }
 
-  //std::cerr << "Model coefficients: " << coefficients->values[0] << " " 
-  //                                    << coefficients->values[1] << " "
-  //                                    << coefficients->values[2] << " " 
-  //                                    << coefficients->values[3] << std::endl;
-  //                                    
-  //std::cerr << "Model inliers: " << inliers->indices.size () << std::endl;
-  //std::cerr << "Size of first cluster: " << first_cluster->size () << std::endl;
-  
   Eigen::Vector3f normal(coefficients->values[0], coefficients->values[1], coefficients->values[2]);
   
   
@@ -161,16 +146,11 @@ int main (int argc, char** argv)
     Eigen::Vector4f centroid;
     pcl::compute3DCentroid (*current_cluster_proj, centroid);
   
-    //cout<< "Centroid: "<< endl << centroid[0] << endl << centroid[1] << endl << centroid[2] << endl; 
-  
   
     pcl::PointXYZRGB end_point_1;
     pcl::PointXYZRGB end_point_2;
   
     pcl::getMinMax3D (*current_cluster_proj, end_point_1, end_point_2);
-  
-    //cout << "End point 1: " << end_point_1 << endl;
-    //cout << "End point 2: " << end_point_2 << endl;
     
     int v1 = rand() % current_cluster_proj->size();
     pcl::PointXYZRGB surf_center;
@@ -215,11 +195,6 @@ int main (int argc, char** argv)
     }
     std::cout << "Wybrany promien: " << radius << ", rozpietosc chmury: " << distance << endl;
   
-  
-    //cout << "Distance: " << distance << endl;
-    //cout << "Surfel radius: " << radius << endl;
-  
-
     pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices;
     extract_indices.setInputCloud (current_cluster_proj);
     extract_indices.setIndices (probably_used_points);

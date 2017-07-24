@@ -30,19 +30,20 @@
 
 int main (int argc, char** argv)
 {
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGB>);
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_smaller (new pcl::PointCloud<pcl::PointXYZRGB>);
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZRGB>);
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered_p (new pcl::PointCloud<pcl::PointXYZRGB>);
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_p (new pcl::PointCloud<pcl::PointXYZRGB>);
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr podloga (new pcl::PointCloud<pcl::PointXYZRGB>);
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr projected (new pcl::PointCloud<pcl::PointXYZRGB>);
-  pcl::IndicesPtr indices (new std::vector<int>);
+  if(argc < 2){
+    cout << "Name the cloud you want to clean!\n";
+    return 0;
+  }
+  std::string name;
+  name = argv[1];
+  cout << name;
   
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGB>);
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZRGB>);
   
   pcl::PCDWriter writer;
   
-  if (pcl::io::loadPCDFile<pcl::PointXYZRGB> ("cloud3-3-2-2017.pcd", *cloud) == -1) //* load the file
+  if (pcl::io::loadPCDFile<pcl::PointXYZRGB> (name, *cloud) == -1) //* load the file
   {
     PCL_ERROR ("Couldn't read the file! \n");
     return (-1);
@@ -58,14 +59,7 @@ int main (int argc, char** argv)
   sor.setMeanK (50);
   sor.setStddevMulThresh (1.0);
   sor.filter (*cloud_filtered);
-         
-  for (int i = 0; i < cloud_filtered->width * cloud_filtered->height; i+=30) indices->push_back(i);
-  
-  pcl::VoxelGrid<pcl::PointXYZRGB> vg;
-  vg.setInputCloud (cloud_filtered);
-  vg.setLeafSize (0.05f, 0.05f, 0.05f);
-  vg.filter (*cloud_smaller);
- 
+
 
   std::cerr << "Cloud after filtering: " << std::endl;
   std::cerr << *cloud_filtered << std::endl;
