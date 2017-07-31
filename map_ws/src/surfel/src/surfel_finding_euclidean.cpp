@@ -79,26 +79,26 @@ int main (int argc, char** argv)
   
   /////////////////////////////// finding clusters /////////////////////////////////////
   
+  //pcl::PCDWriter writer;
+  //writer.write<pcl::PointXYZRGB> ("cloud_filtered_p.pcd", *cloud_filtered_p, false);
   
-  
-  
-  
-  
-  
+
   ///////////////////////// euclidean cluster extraction ///////////////////////////////////
     // Creating the KdTree object for the search method of the extraction
+
   pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree2 (new pcl::search::KdTree<pcl::PointXYZRGB>);
-  tree2->setInputCloud (cloud_filtered);
+  tree2->setInputCloud (cloud_filtered_p);
 
   std::vector<pcl::PointIndices> cluster_indices;
   pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> ec;
-  ec.setClusterTolerance (0.02); // 2cm
+  ec.setClusterTolerance (0.1); // w metrach
   ec.setMinClusterSize (100);
-  ec.setMaxClusterSize (25000);
+  ec.setMaxClusterSize (250000);
   ec.setSearchMethod (tree2);
-  ec.setInputCloud (cloud_filtered);
+  ec.setInputCloud (cloud_filtered_p);
   ec.extract (cluster_indices);
   
+  std::cout <<"Jest " << cluster_indices.size() << " klastrow\n";
     int j = 0;
     std::vector<pcl::ModelCoefficients> cone_coeffs;
     
@@ -111,118 +111,133 @@ int main (int argc, char** argv)
     
     
   for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it){
+    std::cout << "Robie z klastra chmure punktow\n";
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr current_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
     for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); ++pit)
-      current_cluster->points.push_back (cloud_filtered->points[*pit]); //*
+      current_cluster->points.push_back (cloud_filtered_p->points[*pit]); //*
     current_cluster->width = current_cluster->points.size ();
     current_cluster->height = 1;
     current_cluster->is_dense = true;
     
-    
-
-    pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
-    pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
-    // Create the segmentation object
-    pcl::SACSegmentation<pcl::PointXYZRGB> seg;
-    
-    
-    // Optional
-    seg.setOptimizeCoefficients (true);
-    // Mandatory
-    seg.setModelType (pcl::SACMODEL_PLANE);
-    seg.setMethodType (pcl::SAC_RANSAC);
-    seg.setDistanceThreshold (0.1);
-  
-    seg.setInputCloud (current_cluster);
-    seg.segment (*inliers, *coefficients);
-  
-  
-  if (inliers->indices.size () == 0){
-    PCL_ERROR ("Could not estimate a planar model for the given dataset.");
-    return (-1);
-  }
-
-  Eigen::Vector3f normal(coefficients->values[0], coefficients->values[1], coefficients->values[2]);
-    
-    
-    
-    pcl::ProjectInliers<pcl::PointXYZRGB> proj;
-    proj.setModelType (pcl::SACMODEL_PLANE);
-    proj.setInputCloud (current_cluster);
-    proj.setModelCoefficients (coefficients);
-    proj.filter (*current_cluster_proj);
-  
-    while(current_cluster_proj->size()>20){
-      Eigen::Vector4f centroid;
-      pcl::compute3DCentroid (*current_cluster_proj, centroid);
-  
-  
-      pcl::PointXYZRGB end_point_1;
-      pcl::PointXYZRGB end_point_2;
-  
-      pcl::getMinMax3D (*current_cluster_proj, end_point_1, end_point_2);
-    
-      int v1 = rand() % current_cluster_proj->size();
-      pcl::PointXYZRGB surf_center;
-      surf_center=current_cluster_proj->points[v1];
-    
-  
-      float distance = sqrtf(pow(end_point_1.x-end_point_2.x,2)+pow(end_point_1.y-end_point_2.y,2)+pow(end_point_1.z-end_point_2.z,2));
-      float radius=distance/4;
-  
-      int old_percentage=0;
-      int old_k = 0;
-      float last_gain = 0; // stosunek ilosci punktow do powierzchni
-      pcl::IndicesPtr probably_used_points (new std::vector<int>);
-      for(float k=radius; k<distance/2; k+=0.05){
-        pcl::IndicesPtr used_points (new std::vector<int>);
-        std::cout << "Badany promien: " << k << endl;
-        float gain=0;
-        int percentage=0;
-        for(int i=0; i<current_cluster_proj->size(); i++){
-          pcl::PointXYZRGB poi = current_cluster_proj->points[i];
-          if((pow(poi.x-surf_center.x,2)+pow(poi.y-surf_center.y,2)+pow(poi.z-surf_center.z,2))<pow(k,2)){
-            percentage++;
-            used_points->push_back(i);
-          }
-          gain = percentage/(k*k);
-        }
-        percentage=percentage*100;
-        percentage=percentage/current_cluster_proj->size();
-        if(gain>last_gain){
-          last_gain = gain;
-          old_percentage=percentage;
-          old_k=k;
-          radius=k;
-          probably_used_points=used_points;
-        
-        }
-        else break;
-      }
-      std::cout << "Wybrany promien: " << radius << ", rozpietosc chmury: " << distance << endl;
-  
-      pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices;
-      extract_indices.setInputCloud (current_cluster_proj);
-      extract_indices.setIndices (probably_used_points);
-      extract_indices.setNegative (true);
-      extract_indices.filter (*current_cluster_proj);
-    
-      int deg=82;
-      float rad = 1.43116999; //deg in radians
-    
-      // Draw a surfel //
-      pcl::ModelCoefficients cone_coeff;
-      cone_coeff.values.resize (7);    // We need 7 values
-      cone_coeff.values[0] = surf_center.x;
-      cone_coeff.values[1] = surf_center.y;
-      cone_coeff.values[2] = surf_center.z;
-      cone_coeff.values[3] = normal[0]*(radius/tan(rad));
-      cone_coeff.values[4] = normal[1]*(radius/tan(rad));
-      cone_coeff.values[5] = normal[2]*(radius/tan(rad));
-      cone_coeff.values[6] = deg; // degrees
+    while(current_cluster->size()>100){
       
-      cone_coeffs.push_back(cone_coeff);
+      
+
+      pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
+      pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
+      // Create the segmentation object
+      pcl::SACSegmentation<pcl::PointXYZRGB> seg;
+      
+      
+      // Optional
+      seg.setOptimizeCoefficients (true);
+      // Mandatory
+      seg.setModelType (pcl::SACMODEL_PLANE);
+      seg.setMethodType (pcl::SAC_RANSAC);
+      seg.setDistanceThreshold (0.1);
+    
+      seg.setInputCloud (current_cluster);
+      seg.segment (*inliers, *coefficients);
+    
+      
+      if (inliers->indices.size () == 0){
+        PCL_ERROR ("Could not estimate a planar model for the given dataset.");
+        break;
+      }
+
+      Eigen::Vector3f normal(coefficients->values[0], coefficients->values[1], coefficients->values[2]);
+        
+        
+      
+      pcl::ProjectInliers<pcl::PointXYZRGB> proj;
+      proj.setModelType (pcl::SACMODEL_PLANE);
+      proj.setInputCloud (current_cluster);
+      proj.setModelCoefficients (coefficients);
+      proj.filter (*current_cluster_proj);
+      
+      int tries=current_cluster_proj->size();
+      while(current_cluster_proj->size()>30 && tries--){
+        Eigen::Vector4f centroid;
+        pcl::compute3DCentroid (*current_cluster_proj, centroid);
+    
+    
+        pcl::PointXYZRGB end_point_1;
+        pcl::PointXYZRGB end_point_2;
+    
+        pcl::getMinMax3D (*current_cluster_proj, end_point_1, end_point_2);
+      
+        int v1 = rand() % current_cluster_proj->size();
+        pcl::PointXYZRGB surf_center;
+        surf_center=current_cluster_proj->points[v1];
+      
+    
+        float distance = sqrtf(pow(end_point_1.x-end_point_2.x,2)+pow(end_point_1.y-end_point_2.y,2)+pow(end_point_1.z-end_point_2.z,2));
+        float radius=0.1;
+    
+        int old_percentage=0;
+        int old_k = 0;
+        float last_gain = 0; // stosunek ilosci punktow do powierzchni
+        pcl::IndicesPtr probably_used_points (new std::vector<int>);
+        for(float k=radius; k<distance/2; k+=0.05){
+          pcl::IndicesPtr used_points (new std::vector<int>);
+          //std::cout << "Badany promien: " << k << endl;
+          float gain=0;
+          int percentage=0;
+          for(int i=0; i<current_cluster_proj->size(); i++){
+            pcl::PointXYZRGB poi = current_cluster_proj->points[i];
+            if((pow(poi.x-surf_center.x,2)+pow(poi.y-surf_center.y,2)+pow(poi.z-surf_center.z,2))<pow(k,2)){
+              percentage++;
+              used_points->push_back(i);
+            }
+            gain = percentage/(k*k);
+          }
+          percentage=percentage*100;
+          percentage=percentage/current_cluster_proj->size();
+          if(gain>last_gain){
+            last_gain = gain;
+            old_percentage=percentage;
+            old_k=k;
+            radius=k;
+            probably_used_points=used_points;
+          
+          }
+          else break;
+        }
+        std::cout << "Wybrany promien: " << radius << ", rozpietosc chmury: " << distance << "tries: " << tries << endl;
+        if(probably_used_points->size()>15){
+          pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices;
+          extract_indices.setInputCloud (current_cluster_proj);
+          extract_indices.setIndices (probably_used_points);
+          extract_indices.setNegative (true);
+          extract_indices.filter (*current_cluster_proj);
+        
+          int deg=82;
+          float rad = 1.43116999; //deg in radians
+          
+          // Draw a surfel //
+          pcl::ModelCoefficients cone_coeff;
+          cone_coeff.values.resize (7);    // We need 7 values
+          cone_coeff.values[0] = surf_center.x;
+          cone_coeff.values[1] = surf_center.y;
+          cone_coeff.values[2] = surf_center.z;
+          cone_coeff.values[3] = normal[0]*(radius/tan(rad));
+          cone_coeff.values[4] = normal[1]*(radius/tan(rad));
+          cone_coeff.values[5] = normal[2]*(radius/tan(rad));
+          cone_coeff.values[6] = deg; // degrees
+          
+          cone_coeffs.push_back(cone_coeff);
+        }
+        
+      }
+      
+      pcl::ExtractIndices<pcl::PointXYZRGB> extract_i;
+      extract_i.setInputCloud (current_cluster);
+      extract_i.setIndices (inliers);
+      extract_i.setNegative (true);
+      extract_i.filter (*current_cluster);
+      break;
     }
+    break;
   }
 
 

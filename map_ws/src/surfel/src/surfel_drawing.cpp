@@ -33,6 +33,17 @@
 
 int main (int argc, char** argv)
 {
+  
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered_p (new pcl::PointCloud<pcl::PointXYZRGB>);
+  
+  if (pcl::io::loadPCDFile<pcl::PointXYZRGB> ("cloud_filtered_p.pcd", *cloud_filtered_p) == -1) //* load the file
+  {
+    PCL_ERROR ("Couldn't read the file! \n");
+    return (-1);
+  }
+  
+  
+  
   std::vector<pcl::ModelCoefficients> cone_coeffs;
   
   std::ifstream infile("surfels.txt");
@@ -76,6 +87,7 @@ int main (int argc, char** argv)
     b = cone_coeffs[i].values[5]/sum;
     viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, r, g, b, name);
   }
+  viewer->addPointCloud<pcl::PointXYZRGB> (cloud_filtered_p, "cloud");
   
   while (!viewer->wasStopped ())
   {

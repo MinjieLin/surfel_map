@@ -233,5 +233,4 @@ int main (int argc, char** argv)
   surfel_list.close();
   return (0);
   
-  
 }
