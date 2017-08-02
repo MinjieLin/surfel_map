@@ -34,6 +34,8 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/segmentation/extract_clusters.h>
 
+#include <pcl/surface/convex_hull.h>
+
 int main (int argc, char** argv)
 {
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -91,8 +93,8 @@ int main (int argc, char** argv)
 
   std::vector<pcl::PointIndices> cluster_indices;
   pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> ec;
-  ec.setClusterTolerance (0.1); // w metrach
-  ec.setMinClusterSize (100);
+  ec.setClusterTolerance (0.08); // w metrach
+  ec.setMinClusterSize (500);
   ec.setMaxClusterSize (250000);
   ec.setSearchMethod (tree2);
   ec.setInputCloud (cloud_filtered_p);
@@ -119,7 +121,7 @@ int main (int argc, char** argv)
     current_cluster->height = 1;
     current_cluster->is_dense = true;
     
-    while(current_cluster->size()>100){
+    while(current_cluster->size()>200){
       
       
 
@@ -155,8 +157,18 @@ int main (int argc, char** argv)
       proj.setModelCoefficients (coefficients);
       proj.filter (*current_cluster_proj);
       
-      int tries=current_cluster_proj->size();
-      while(current_cluster_proj->size()>30 && tries--){
+      
+      pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_hull (new pcl::PointCloud<pcl::PointXYZRGB>);
+      pcl::ConvexHull<pcl::PointXYZRGB> chull;
+      chull.setInputCloud (current_cluster_proj);
+      chull.reconstruct (*cloud_hull);
+
+      std::cerr << "Convex hull has: " << cloud_hull->points.size () << " data points." << std::endl;
+      
+      
+      
+      int tries=current_cluster_proj->size()/5;
+      while(current_cluster_proj->size()>50 && tries--){
         Eigen::Vector4f centroid;
         pcl::compute3DCentroid (*current_cluster_proj, centroid);
     
@@ -177,8 +189,19 @@ int main (int argc, char** argv)
         int old_percentage=0;
         int old_k = 0;
         float last_gain = 0; // stosunek ilosci punktow do powierzchni
+        float max_gain = 0;
         pcl::IndicesPtr probably_used_points (new std::vector<int>);
-        for(float k=radius; k<distance/2; k+=0.05){
+        
+        float distance_from_hull = 0;
+        float min_distance_from_hull=1000000;
+        for(int h=0; h<cloud_hull->points.size (); h++){
+          pcl::PointXYZRGB poi = cloud_hull->points[h];
+          distance_from_hull = sqrtf(pow(poi.x-surf_center.x,2)+pow(poi.y-surf_center.y,2)+pow(poi.z-surf_center.z,2));
+          if(distance_from_hull<min_distance_from_hull)
+            min_distance_from_hull=distance_from_hull;
+        }
+        
+        for(float k=radius; k<min_distance_from_hull; k+=0.05){
           pcl::IndicesPtr used_points (new std::vector<int>);
           //std::cout << "Badany promien: " << k << endl;
           float gain=0;
@@ -201,9 +224,9 @@ int main (int argc, char** argv)
             probably_used_points=used_points;
           
           }
-          else break;
+          //else break;
         }
-        std::cout << "Wybrany promien: " << radius << ", rozpietosc chmury: " << distance << "tries: " << tries << endl;
+        //std::cout << "Wybrany promien: " << radius << ", rozpietosc chmury: " << distance << "tries: " << tries << endl;
         if(probably_used_points->size()>15){
           pcl::ExtractIndices<pcl::PointXYZRGB> extract_indices;
           extract_indices.setInputCloud (current_cluster_proj);
@@ -235,9 +258,9 @@ int main (int argc, char** argv)
       extract_i.setIndices (inliers);
       extract_i.setNegative (true);
       extract_i.filter (*current_cluster);
-      break;
+      //break;
     }
-    break;
+    //break;
   }
 
 
