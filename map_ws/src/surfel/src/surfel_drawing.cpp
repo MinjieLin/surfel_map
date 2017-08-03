@@ -32,11 +32,10 @@
 
 
 int main (int argc, char** argv)
-{
-  
+{  
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered_p (new pcl::PointCloud<pcl::PointXYZRGB>);
   
-  if (pcl::io::loadPCDFile<pcl::PointXYZRGB> ("cloud_filtered_p.pcd", *cloud_filtered_p) == -1) //* load the file
+  if (pcl::io::loadPCDFile<pcl::PointXYZRGB> ("cloud_cluster.pcd", *cloud_filtered_p) == -1) //* load the file
   {
     PCL_ERROR ("Couldn't read the file! \n");
     return (-1);

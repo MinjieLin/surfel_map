@@ -38,11 +38,23 @@
 
 int main (int argc, char** argv)
 {
+  
+  
+  int which_plane = -1;
+  
+  if (argc > 1) {
+    which_plane = atoi(argv[1]);
+  }
+  
+  if (which_plane >= 0) {
+    std::cout << "Will process only " << which_plane << " plane\n";
+  }
+  
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered_p (new pcl::PointCloud<pcl::PointXYZRGB>);
   pcl::IndicesPtr indices (new std::vector<int>);
   
-  if (pcl::io::loadPCDFile<pcl::PointXYZRGB> ("cloud_filtered.pcd", *cloud_filtered) == -1) //* load the file
+  if (pcl::io::loadPCDFile<pcl::PointXYZRGB> ("cloud_cluster.pcd", *cloud_filtered) == -1) //* load the file
   {
     PCL_ERROR ("Couldn't read the file! \n");
     return (-1);
@@ -52,12 +64,11 @@ int main (int argc, char** argv)
             << "."
             << std::endl;
             
-  for (int i = 0; i < cloud_filtered->width * cloud_filtered->height; i+=30) indices->push_back(i);
+  for (int i = 0; i < cloud_filtered->width * cloud_filtered->height; i+=1) indices->push_back(i);
   
   
   //////////////////////////////////// downsampling the cloud //////////////////////////// 
   
-  //plaszczyzny
   pcl::search::Search<pcl::PointXYZRGB>::Ptr tree = boost::shared_ptr<pcl::search::Search<pcl::PointXYZRGB> > (new pcl::search::KdTree<pcl::PointXYZRGB>);
   pcl::PointCloud <pcl::Normal>::Ptr normals (new pcl::PointCloud <pcl::Normal>);
   pcl::PointCloud <pcl::Normal>::Ptr normals_p (new pcl::PointCloud <pcl::Normal>);
@@ -79,6 +90,9 @@ int main (int argc, char** argv)
   extract_norm.setNegative (false);
   extract_norm.filter (*normals_p);
   
+  pcl::PCDWriter writer;
+  writer.write<pcl::PointXYZRGB> ("cloud_filtered_p.pcd", *cloud_filtered_p, false);
+  
   /////////////////////////////// finding clusters /////////////////////////////////////
   
   //pcl::PCDWriter writer;
@@ -94,11 +108,36 @@ int main (int argc, char** argv)
   std::vector<pcl::PointIndices> cluster_indices;
   pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> ec;
   ec.setClusterTolerance (0.08); // w metrach
-  ec.setMinClusterSize (500);
-  ec.setMaxClusterSize (250000);
+  ec.setMinClusterSize (1000);
+  ec.setMaxClusterSize (250000); // swiezo zabrane 2 zera
   ec.setSearchMethod (tree2);
   ec.setInputCloud (cloud_filtered_p);
   ec.extract (cluster_indices);
+  
+  /////////////// do wyrzucenia pozniej, tylko pokazowo /////////////////////
+   
+  /*  int z = 0;
+  for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
+  {
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
+    for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); ++pit)
+      cloud_cluster->points.push_back (cloud_filtered_p->points[*pit]); //*
+    cloud_cluster->width = cloud_cluster->points.size ();
+    cloud_cluster->height = 1;
+    cloud_cluster->is_dense = true;
+
+    std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
+    std::stringstream ss;
+    ss << "cloud_cluster_" << z << ".pcd";
+    writer.write<pcl::PointXYZRGB> (ss.str (), *cloud_cluster, false);
+    z++;
+  }*/
+  
+  
+  //////////////////// koniec kawalka do wyrzucenia ///////////////////////
+  
+  
+  
   
   std::cout <<"Jest " << cluster_indices.size() << " klastrow\n";
     int j = 0;
@@ -121,9 +160,8 @@ int main (int argc, char** argv)
     current_cluster->height = 1;
     current_cluster->is_dense = true;
     
-    while(current_cluster->size()>200){
-      
-      
+    int plane_nr = 0;
+    while(current_cluster->size()>200){     
 
       pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
       pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
@@ -165,7 +203,7 @@ int main (int argc, char** argv)
 
       std::cerr << "Convex hull has: " << cloud_hull->points.size () << " data points." << std::endl;
       
-      
+      if (which_plane < 0 || which_plane == plane_nr) {
       
       int tries=current_cluster_proj->size()/5;
       while(current_cluster_proj->size()>50 && tries--){
@@ -252,6 +290,9 @@ int main (int argc, char** argv)
         }
         
       }
+       
+      } // if (which_plane)
+      plane_nr++;
       
       pcl::ExtractIndices<pcl::PointXYZRGB> extract_i;
       extract_i.setInputCloud (current_cluster);
