@@ -98,6 +98,58 @@ int main (int argc, char** argv)
   //pcl::PCDWriter writer;
   //writer.write<pcl::PointXYZRGB> ("cloud_filtered_p.pcd", *cloud_filtered_p, false);
   
+  
+  
+  pcl::SACSegmentation<pcl::PointXYZRGB> seg;
+  pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
+  pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_plane (new pcl::PointCloud<pcl::PointXYZRGB> ()),cloud_f (new pcl::PointCloud<pcl::PointXYZRGB> ());
+  //pcl::PCDWriter writer;
+  seg.setOptimizeCoefficients (true);
+  seg.setModelType (pcl::SACMODEL_PLANE);
+  seg.setMethodType (pcl::SAC_RANSAC);
+  seg.setMaxIterations (100);
+  seg.setDistanceThreshold (0.02);
+
+  int i=0, nr_points = (int) cloud_filtered->points.size ();
+  
+  
+  int podloga=0;
+  while (cloud_filtered_p->points.size () > 0.5 * nr_points)
+  {
+    // Segment the largest planar component from the remaining cloud
+    seg.setInputCloud (cloud_filtered_p);
+    seg.segment (*inliers, *coefficients);
+    if (inliers->indices.size () == 0)
+    {
+      std::cout << "Could not estimate a planar model for the given dataset." << std::endl;
+      break;
+    }
+
+    // Extract the planar inliers from the input cloud
+    pcl::ExtractIndices<pcl::PointXYZRGB> extract;
+    extract.setInputCloud (cloud_filtered_p);
+    extract.setIndices (inliers);
+    extract.setNegative (false);
+
+    // Get the points associated with the planar surface
+    extract.filter (*cloud_plane);
+    std::cout << "PointCloud representing the planar component: " << cloud_plane->points.size () << " data points." << std::endl;
+    
+    std::string name="podloga";
+    name+=std::to_string(podloga);
+    name+=".pcd";
+    
+    writer.write<pcl::PointXYZRGB> (name, *cloud_plane, false);
+    podloga++;
+
+    // Remove the planar inliers, extract the rest
+    extract.setNegative (true);
+    extract.filter (*cloud_f);
+    *cloud_filtered_p = *cloud_f;
+  }
+  
+  
 
   ///////////////////////// euclidean cluster extraction ///////////////////////////////////
     // Creating the KdTree object for the search method of the extraction
@@ -107,16 +159,16 @@ int main (int argc, char** argv)
 
   std::vector<pcl::PointIndices> cluster_indices;
   pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> ec;
-  ec.setClusterTolerance (0.08); // w metrach
-  ec.setMinClusterSize (1000);
-  ec.setMaxClusterSize (250000); // swiezo zabrane 2 zera
+  ec.setClusterTolerance (0.05); // w metrach
+  ec.setMinClusterSize (200);
+  ec.setMaxClusterSize (2500); // swiezo zabrane 2 zera
   ec.setSearchMethod (tree2);
   ec.setInputCloud (cloud_filtered_p);
   ec.extract (cluster_indices);
   
   /////////////// do wyrzucenia pozniej, tylko pokazowo /////////////////////
    
-  /*  int z = 0;
+  int z = 0;
   for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
   {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -128,10 +180,10 @@ int main (int argc, char** argv)
 
     std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
     std::stringstream ss;
-    ss << "cloud_cluster_" << z << ".pcd";
+    ss << "cloud_cluster_no_floor" << z << ".pcd";
     writer.write<pcl::PointXYZRGB> (ss.str (), *cloud_cluster, false);
     z++;
-  }*/
+  }
   
   
   //////////////////// koniec kawalka do wyrzucenia ///////////////////////
@@ -174,7 +226,7 @@ int main (int argc, char** argv)
       // Mandatory
       seg.setModelType (pcl::SACMODEL_PLANE);
       seg.setMethodType (pcl::SAC_RANSAC);
-      seg.setDistanceThreshold (0.1);
+      seg.setDistanceThreshold (0.03);
     
       seg.setInputCloud (current_cluster);
       seg.segment (*inliers, *coefficients);
